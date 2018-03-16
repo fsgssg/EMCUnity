@@ -1,17 +1,17 @@
 #!/usr/bin/env python
 # encoding: utf-8
-
-
 """EMC Command Line Interface"""
-
 import sys
 import argparse
 import logging
+import getpass
 from EMCUnity import *
 
+global logger
 module = sys.modules['__main__'].__file__
-log = logging.getLogger(module)
-
+logger = logging.getLogger(module)
+#logger = logging.getLogger(__name__)
+logger.warn('Starting EMC CLI')
 def parse_command_line(argv):
     """Parse command line argument. See -h option
 
@@ -43,8 +43,8 @@ def parse_command_line(argv):
                                        dest='subparser_name' )
 
     def subcommand(func, aliases=[], parent=subparsers):
-        parser = parent.add_parser(func.__name__, aliases=aliases, help=func.__doc__)
-        parser.set_defaults(func=func)
+        parser = parent.add_parser(func.__name__, help=func.__doc__)
+        parser.set_defaults(func=func, aliases=aliases)
         return parser
 
     # def create_lun(self, lun_name, pool_id, size, lun_description=None):
@@ -52,8 +52,8 @@ def parse_command_line(argv):
     p_create_lun = subcommand(Unity.create_lun, aliases=['cl'])
     p_create_lun.add_argument('-o', '--pool', dest='pool', default="pool_1",
                                    type=str, help='Name of Pool of str arg')
-    p_create_lun.add_argument('-s', '--size', dest='size', default="p1099511627776",
-                                   type=str, help='Name of Pool of str arg')
+    p_create_lun.add_argument('-s', '--size', dest='size', default="1099511627776",
+                                   type=int, help='Size of Pool as unsigned integer (default of 1TB)')
     p_create_lun.add_argument('lun_name', metavar='lun_name', type=str,
                         help='Name of LUN to create in format: ldom-vol#')
 
@@ -62,31 +62,39 @@ def parse_command_line(argv):
 #        Performs a request of all fields for a given object_type unless
 #        specific fields have been requested as part of the payload
 #        """
-    p_get_from_type = subcommand(Unity.get_from_type, aliases=['get'])
-    p_get_from_type.add_argument('object_type', metavar='object_type', type=str,
-                        help='the object type to return')
+    # def lun(self, item_filter = None, item_id=None, item_name=None):
+    # def pool(self, item_filter = None, item_id=None, item_name=None):
+    ##p_get_pool = subcommand(Unity.pool, aliases=[])
+    ##p_get_pool.add_argument('-f', '--filter', dest='item_filter', default=None,
+    ##                               type=str, help='item_filter')
+    ##p_get_pool.add_argument('-i', '--id', dest='item_id', default=None,
+    ##                               type=str, help='item_id')
+    ##p_get_pool.add_argument('-n', '--name', dest='item_name', default=None,
+    ##                               type=str, help='item_name')
+    # p_get_lun.add_argument('item_filter', metavar='item_filter', type=str, help='Gather a list of pools')
 
     p_delete_lun = subcommand(Unity.delete_lun)
     p_delete_lun.add_argument('lun_id', metavar='lun_id', type=str,
-                                   help='Storage Resource lun_id')
-
+                                help='Storage Resource lun_id')
 
     # parse the args and call whatever function was selected
     args = parser.parse_args()
+    # Sets log level to WARN going more verbose for each new -v.
+    logger.setLevel(max(3 - args.verbose_count, 0) * 10)
     return args
 
 def main():
     """Main program. Sets up logging and do some work."""
-    log.info(sys.argv)
-    args = parse_command_line(sys.argv)
-    levels = [logging.WARNING, logging.INFO, logging.DEBUG]
-    level = levels[min(len(levels)-1,args.verbose_count)]  # capped to number of levels
-    log.info("Arguments: {}".format(args))
-    logging.basicConfig(stream=sys.stderr, level=level,
-                        format='%(name)s (%(levelname)s): %(message)s')
-    # Sets log level to WARN going more verbose for each new -v.
-    log.setLevel(max(3 - args.verbose_count, 0) * 10)
 
+    logging.getLogger(__name__).addHandler(logging.NullHandler())
+    logging.basicConfig(stream=sys.stderr, level=logging.DEBUG,
+                        format='%(name)s (%(levelname)s): %(message)s')
+
+    logger.info(sys.argv)
+    args = parse_command_line(sys.argv)
+    #levels = [logging.WARNING, logging.INFO, logging.DEBUG]
+    #level = levels[min(len(levels)-1,args.verbose_count)]  # capped to number of levels
+    logger.info("Arguments: {}".format(args))
     # Never ask for a password in command-line. Manually ask for it here
     if args.password:
         password = getpass.getpass()
@@ -98,11 +106,14 @@ def main():
         # Create the unity session
         #unity = Unity('unity.ktelep.local','admin','TooManySecrets')
         unity = Unity(args.host, args.user, password)
+        pools = unity.pool()
+        logger.info('Pools: %s', pools)
         args.func(args)
     except KeyboardInterrupt:
-        log.error('Program interrupted!')
+        logger.error('Program interrupted!')
     finally:
         logging.shutdown()
 
 if __name__ == "__main__":
+    logging.getLogger(__name__).addHandler(logging.NullHandler())
     sys.exit(main())
