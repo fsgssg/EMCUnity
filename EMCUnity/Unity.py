@@ -34,7 +34,7 @@ class Unity:
         if 'EMC-CSRF-TOKEN' not in self.headers:
             self.headers['EMC-CSRF-TOKEN'] = response.headers.get('emc-csrf-token')
 
-        if 'EMC-CSRF-TOKEN' in self.headers:
+        if self.headers['EMC-CSRF-TOKEN']:
             self.is_auth = True
 
         return
