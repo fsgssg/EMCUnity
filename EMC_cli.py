@@ -9,8 +9,8 @@ from EMCUnity import *
 
 global logger
 module = sys.modules['__main__'].__file__
-logger = logging.getLogger(module)
-#logger = logging.getLogger(__name__)
+#logger = logging.getLogger(module)
+logger = logging.getLogger(__name__)
 logger.warn('Starting EMC CLI')
 def parse_command_line(argv):
     """Parse command line argument. See -h option
@@ -44,7 +44,7 @@ def parse_command_line(argv):
 
     def subcommand(func, aliases=[], parent=subparsers):
         parser = parent.add_parser(func.__name__, help=func.__doc__)
-        parser.set_defaults(func=func, aliases=aliases)
+        parser.set_defaults(func=func)
         return parser
 
     # def create_lun(self, lun_name, pool_id, size, lun_description=None):
@@ -77,23 +77,27 @@ def parse_command_line(argv):
     p_delete_lun.add_argument('lun_id', metavar='lun_id', type=str,
                                 help='Storage Resource lun_id')
 
+    def test(wtf):
+	print "Testing"
+	print "What the fuck is this being passed to it?"
+	print wtf
+
+	return True
+
+    p_test = subcommand(test)
+    p_test.add_argument('test', metavar="test", type=str, help="Test function")
+
     # parse the args and call whatever function was selected
     args = parser.parse_args()
     # Sets log level to WARN going more verbose for each new -v.
-    logger.setLevel(max(3 - args.verbose_count, 0) * 10)
     return args
 
-def main():
+def main(args, loglevel):
     """Main program. Sets up logging and do some work."""
-
-    logging.getLogger(__name__).addHandler(logging.NullHandler())
+    #logging.getLogger(__name__).addHandler(logging.NullHandler())
     logging.basicConfig(stream=sys.stderr, level=logging.DEBUG,
-                        format='%(name)s (%(levelname)s): %(message)s')
+			format="%s(levelname)s: %(message)s" )
 
-    logger.info(sys.argv)
-    args = parse_command_line(sys.argv)
-    #levels = [logging.WARNING, logging.INFO, logging.DEBUG]
-    #level = levels[min(len(levels)-1,args.verbose_count)]  # capped to number of levels
     logger.info("Arguments: {}".format(args))
     # Never ask for a password in command-line. Manually ask for it here
     if args.password:
@@ -106,8 +110,8 @@ def main():
         # Create the unity session
         #unity = Unity('unity.ktelep.local','admin','TooManySecrets')
         unity = Unity(args.host, args.user, password)
-        pools = unity.pool()
-        logger.info('Pools: %s', pools)
+        luns = unity.lun()
+	logger.info(luns)
         args.func(args)
     except KeyboardInterrupt:
         logger.error('Program interrupted!')
@@ -115,5 +119,7 @@ def main():
         logging.shutdown()
 
 if __name__ == "__main__":
-    logging.getLogger(__name__).addHandler(logging.NullHandler())
-    sys.exit(main())
+    args = parse_command_line(sys.argv)
+    loglevel = (max(3 - args.verbose_count, 0) * 10)
+    print loglevel
+    sys.exit(main(args, loglevel))

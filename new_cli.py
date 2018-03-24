@@ -118,9 +118,15 @@ def test(args):
     ''' Currently Testing authenticated responses'''
     unity = Unity(args.emc, args.user, 'NceSsa7I3STo!')
 
-    url_path = '/types/snap/instances'
+    #url_path = '/types/snap/instances?fields=name'
+    snapSchedules = '/types/snapSchedule/instances'
+    snapSch_1 = '/instances/snapSchedule/snapSch_1'
+    url_path = snapSch_1
     response = unity.unity_request(url_path)
-    print "Is it Authorized?: {}".format(unity.is_auth)
+    print response.json()
+    #[0]['content']
+
+    #print "Is it Authorized?: {}".format(unity.is_auth)
     #print unity.snap()['0']['entries']['content']
     #print (vars(unity))
     #print unity.headers
@@ -133,6 +139,7 @@ def status(args):
     print unity.model
     print unity.software
     print "Is Authenticated: {}".format(unity.is_auth)
+
 
 if __name__ == "__main__":
     '''CLI Top Level Parsing'''
